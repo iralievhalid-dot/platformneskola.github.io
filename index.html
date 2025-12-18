@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Школьная Платформа</title>
+    <script src="unpkg.com"></script>
+    <script src="unpkg.com"></script>
+    <script src="unpkg.com"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; margin: 0; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; background: #007bff; color: white; }
+        .input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        nav { background: white; padding: 15px; display: flex; justifyContent: space-between; border-bottom: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState("dashboard"); // dashboard, lessons, chat
+            const [lessonFiles, setLessonFiles] = useState({ hw: false, mat: false });
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.target);
+                const uname = fd.get("username");
+                setUser({
+                    name: fd.get("fname") + " " + fd.get("lname"),
+                    username: uname,
+                    role: uname.includes("teach") ? "teacher" : "student"
+                });
+            };
+
+            if (!user) {
+                return (
+                    <div style={{display: 'flex', justifyContent: 'center', marginTop: '100px'}}>
+                        <form className="card" onSubmit={handleLogin} style={{width: '300px'}}>
+                            <h2>Вход</h2>
+                            <input name="fname" className="input" placeholder="Имя" required />
+                            <input name="lname" className="input" placeholder="Фамилия" required />
+                            <input name="username" className="input" placeholder="Юзернейм (@teach для учителя)" required />
+                            <input name="password" type="password" className="input" placeholder="Пароль" required />
+                            <button className="btn" style={{width: '100%'}}>Войти</button>
+                        </form>
+                    </div>
+                );
+            }
+
+            return (
+                <div>
+                    <nav>
+                        <b>{user.name} ({user.role})</b>
+                        <div>
+                            <button onClick={() => setView("dashboard")} className="btn" style={{marginRight: '10px'}}>Предметы</button>
+                            <button onClick={() => setView("chat")} className="btn">Чат 🔔</button>
+                        </div>
+                    </nav>
+
+                    <div style={{padding: '20px'}}>
+                        {view === "dashboard" && (
+                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px'}}>
+                                {["Математика", "Русский", "Литература"].map(s => (
+                                    <div key={s} className="card" onClick={() => setView("lessons")} style={{cursor: 'pointer'}}>
+                                        <h3>{s}</h3>
+                                        <p>Учитель: Смирнов А.А.</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {view === "lessons" && (
+                            <div className="card">
+                                <h3>Урок №23: Новая тема</h3>
+                                <button className="btn" style={{background: 'green'}} onClick={() => alert("Зал ожидания...")}>Присоединиться к уроку</button>
+                                <hr style={{margin: '20px 0'}} />
+                                <div style={{display: 'flex', gap: '20px'}}>
+                                    <div>
+                                        <strong>ДЗ:</strong><br/>
+                                        {lessonFiles.hw ? "📄 Файл загружен" : (user.role === 'teacher' ? <button onClick={() => setLessonFiles(prev => ({...prev, hw: true}))}>Загрузить ДЗ</button> : "Нет файлов")}
+                                    </div>
+                                    <div>
+                                        <strong>Материалы:</strong><br/>
+                                        {lessonFiles.mat ? "📚 Конспект" : (user.role === 'teacher' ? <button onClick={() => setLessonFiles(prev => ({...prev, mat: true}))}>Загрузить материалы</button> : "Нет файлов")}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === "chat" && (
+                            <div className="card" style={{height: '400px', display: 'flex', flexDirection: 'column'}}>
+                                <div style={{flex: 1, background: '#f9f9f9', padding: '10px', overflowY: 'auto'}}>
+                                    <p><b>Система:</b> Вы вошли в чат.</p>
+                                </div>
+                                <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
+                                    <input className="input" placeholder="Сообщение..." style={{margin: 0}} />
+                                    <button className="btn" onClick={() => alert("Файл 1ГБ имитация...")}>📎</button>
+                                    <button className="btn">Отправить</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
