@@ -2,115 +2,67 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Школьная Платформа</title>
-    <script src="unpkg.com"></script>
-    <script src="unpkg.com"></script>
-    <script src="unpkg.com"></script>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; background: #007bff; color: white; }
-        .input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        nav { background: white; padding: 15px; display: flex; justifyContent: space-between; border-bottom: 1px solid #ddd; }
-    </style>
+    <title>Platform 2025 | Control</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div id="root"></div>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <div id="login-form" class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-gray-200">
+        <h2 class="text-2xl font-black mb-6 text-center text-gray-800">ВХОД В СИСТЕМУ</h2>
+        <input type="text" id="uname" placeholder="Логин (из Supabase)" class="w-full p-3 mb-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+        <input type="password" id="pass" placeholder="Пароль" class="w-full p-3 mb-6 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+        <button onclick="login()" id="btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all">ВОЙТИ</button>
+        <p id="msg" class="text-red-500 text-sm mt-4 text-center hidden"></p>
+    </div>
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState("dashboard"); // dashboard, lessons, chat
-            const [lessonFiles, setLessonFiles] = useState({ hw: false, mat: false });
+    <div id="content" class="hidden w-full max-w-4xl p-6">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl text-center">
+            <h1 class="text-4xl font-black mb-4">ДОБРО ПОЖАЛОВАТЬ!</h1>
+            <p id="welcome-text" class="text-xl text-gray-600 mb-8"></p>
+            <div class="p-6 bg-green-50 border-2 border-dashed border-green-200 rounded-2xl">
+                <p class="text-green-700 font-bold">Связь с базой данных подтверждена.</p>
+                <p class="text-green-600 text-sm">Ты авторизован как Хранитель/Учитель.</p>
+            </div>
+            <button onclick="location.reload()" class="mt-8 text-gray-400 hover:text-red-500 underline text-sm">Выйти из системы</button>
+        </div>
+    </div>
 
-            const handleLogin = (e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                const uname = fd.get("username");
-                setUser({
-                    name: fd.get("fname") + " " + fd.get("lname"),
-                    username: uname,
-                    role: uname.includes("teach") ? "teacher" : "student"
-                });
-            };
+    <script>
+        const S_URL = "https://ihwxjkqzjaacizarwugc.supabase.co";
+        const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3hqa3F6amFhY2l6YXJ3dWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTEzNzcsImV4cCI6MjA4MTcyNzM3N30.wP8r-0PoBtF8pgP1cv_nSW4ueHPnRSeLQtdv9nA8Vu0";
+        const _supabase = supabase.createClient(S_URL, S_KEY);
 
-            if (!user) {
-                return (
-                    <div style={{display: 'flex', justifyContent: 'center', marginTop: '100px'}}>
-                        <form className="card" onSubmit={handleLogin} style={{width: '300px'}}>
-                            <h2>Вход</h2>
-                            <input name="fname" className="input" placeholder="Имя" required />
-                            <input name="lname" className="input" placeholder="Фамилия" required />
-                            <input name="username" className="input" placeholder="Юзернейм (@teach для учителя)" required />
-                            <input name="password" type="password" className="input" placeholder="Пароль" required />
-                            <button className="btn" style={{width: '100%'}}>Войти</button>
-                        </form>
-                    </div>
-                );
+        async function login() {
+            const u = document.getElementById('uname').value;
+            const p = document.getElementById('pass').value;
+            const btn = document.getElementById('btn');
+            const msg = document.getElementById('msg');
+
+            btn.innerText = "ПРОВЕРКА...";
+            msg.classList.add('hidden');
+
+            try {
+                const { data, error } = await _supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', u)
+                    .eq('password', p)
+                    .single();
+
+                if (error || !data) throw new Error("Неверный логин или пароль");
+
+                // Прячем вход, показываем успех
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('welcome-text').innerText = `Привет, ${data.first_name}! Твоя роль: ${data.role}`;
+
+            } catch (err) {
+                msg.innerText = err.message;
+                msg.classList.remove('hidden');
+                btn.innerText = "ВОЙТИ";
             }
-
-            return (
-                <div>
-                    <nav>
-                        <b>{user.name} ({user.role})</b>
-                        <div>
-                            <button onClick={() => setView("dashboard")} className="btn" style={{marginRight: '10px'}}>Предметы</button>
-                            <button onClick={() => setView("chat")} className="btn">Чат 🔔</button>
-                        </div>
-                    </nav>
-
-                    <div style={{padding: '20px'}}>
-                        {view === "dashboard" && (
-                            <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px'}}>
-                                {["Математика", "Русский", "Литература"].map(s => (
-                                    <div key={s} className="card" onClick={() => setView("lessons")} style={{cursor: 'pointer'}}>
-                                        <h3>{s}</h3>
-                                        <p>Учитель: Смирнов А.А.</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {view === "lessons" && (
-                            <div className="card">
-                                <h3>Урок №23: Новая тема</h3>
-                                <button className="btn" style={{background: 'green'}} onClick={() => alert("Зал ожидания...")}>Присоединиться к уроку</button>
-                                <hr style={{margin: '20px 0'}} />
-                                <div style={{display: 'flex', gap: '20px'}}>
-                                    <div>
-                                        <strong>ДЗ:</strong><br/>
-                                        {lessonFiles.hw ? "📄 Файл загружен" : (user.role === 'teacher' ? <button onClick={() => setLessonFiles(prev => ({...prev, hw: true}))}>Загрузить ДЗ</button> : "Нет файлов")}
-                                    </div>
-                                    <div>
-                                        <strong>Материалы:</strong><br/>
-                                        {lessonFiles.mat ? "📚 Конспект" : (user.role === 'teacher' ? <button onClick={() => setLessonFiles(prev => ({...prev, mat: true}))}>Загрузить материалы</button> : "Нет файлов")}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {view === "chat" && (
-                            <div className="card" style={{height: '400px', display: 'flex', flexDirection: 'column'}}>
-                                <div style={{flex: 1, background: '#f9f9f9', padding: '10px', overflowY: 'auto'}}>
-                                    <p><b>Система:</b> Вы вошли в чат.</p>
-                                </div>
-                                <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-                                    <input className="input" placeholder="Сообщение..." style={{margin: 0}} />
-                                    <button className="btn" onClick={() => alert("Файл 1ГБ имитация...")}>📎</button>
-                                    <button className="btn">Отправить</button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
         }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
