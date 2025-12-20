@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform 2025 | Учебный процесс</title>
+    <title>Platform 2025 | Admin Mode</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -12,7 +12,6 @@
         .sidebar-item:hover { color: #4f46e5; background: #f3f4f6; }
         .active-nav { color: #4f46e5; background: #eef2ff; border-right: 4px solid #4f46e5; }
         .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid #f1f5f9; }
-        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.02), 0 8px 10px -6px rgba(0, 0, 0, 0.02); }
     </style>
 </head>
 <body>
@@ -24,7 +23,7 @@
         const _supabase = supabase.createClient(S_URL, S_KEY);
 
         let currentUser = null;
-        let view = 'courses'; // courses, lessons, lesson-details
+        let view = 'courses'; 
         let selectedSubj = '';
         let selectedLessonId = null;
         let lessonTitle = '';
@@ -32,8 +31,8 @@
         function showLogin() {
             document.getElementById('app').innerHTML = `
                 <div class="flex items-center justify-center min-h-screen">
-                    <div class="p-10 w-full max-w-sm bg-white rounded-[3rem] shadow-2xl">
-                        <h2 class="text-3xl font-black mb-8 text-indigo-600 tracking-tighter text-center">ПЛАТФОРМА</h2>
+                    <div class="p-10 w-full max-w-sm bg-white rounded-[3rem] shadow-2xl text-center">
+                        <h2 class="text-3xl font-black mb-8 text-indigo-600 tracking-tighter">ПЛАТФОРМА</h2>
                         <input type="text" id="uname" placeholder="Логин" class="w-full p-4 mb-3 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
                         <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 mb-6 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
                         <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">ВОЙТИ</button>
@@ -45,7 +44,7 @@
             const u = document.getElementById('uname').value;
             const p = document.getElementById('pass').value;
             const { data } = await _supabase.from('users').select('*').eq('username', u).eq('password', p).single();
-            if (data) { currentUser = data; render(); } else { alert("Ошибка!"); }
+            if (data) { currentUser = data; render(); } else { alert("Ошибка доступа!"); }
         }
 
         function render() {
@@ -74,11 +73,11 @@
                                     ${view === 'courses' ? 'Мои курсы' : (view === 'lessons' ? 'Уроки: ' + selectedSubj : lessonTitle)}
                                 </h1>
                             </div>
-                            <div class="flex items-center gap-4">
-                                <button class="text-xl">🔔</button>
+                            <div class="flex items-center gap-6">
+                                ${currentUser.role === 'teacher' ? `<button onclick="toggleModal(true)" class="bg-indigo-600 text-white px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition">+ Добавить контент</button>` : ''}
                                 <div class="text-right">
                                     <p class="font-bold text-sm leading-none">${currentUser.first_name}</p>
-                                    <p class="text-[10px] text-indigo-500 font-black uppercase tracking-tighter">ID: ${currentUser.id}</p>
+                                    <p class="text-[10px] text-indigo-500 font-black uppercase tracking-tighter">${currentUser.role}</p>
                                 </div>
                             </div>
                         </header>
@@ -87,9 +86,60 @@
                             ${view === 'courses' ? renderCourses() : (view === 'lessons' ? renderLessonsList() : renderLessonDetails())}
                         </div>
                     </main>
+                </div>
+
+                <div id="adminModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+                    <div class="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative">
+                        <button onclick="toggleModal(false)" class="absolute top-8 right-8 text-gray-400 hover:text-gray-800 text-2xl">✕</button>
+                        <h3 class="text-2xl font-black mb-6 tracking-tight text-gray-800">Новый материал</h3>
+                        
+                        <div class="space-y-4">
+                            <input type="text" id="newTitle" placeholder="Название урока (например: Урок 1)" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                            
+                            <select id="newSubj" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium appearance-none">
+                                <option value="Математика">Математика</option>
+                                <option value="Русский язык">Русский язык</option>
+                                <option value="Информатика">Информатика</option>
+                            </select>
+
+                            <select id="newType" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium appearance-none">
+                                <option value="material">📚 Материал к уроку</option>
+                                <option value="homework">🎒 Домашнее задание</option>
+                            </select>
+
+                            <input type="text" id="newLink" placeholder="Ссылка на файл (Google Диск)" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                            
+                            <button onclick="saveContent()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">СОХРАНИТЬ</button>
+                        </div>
+                    </div>
                 </div>`;
             if(view === 'lessons') loadLessons();
             if(view === 'lesson-details') loadFiles();
+        }
+
+        function toggleModal(show) {
+            document.getElementById('adminModal').classList.toggle('hidden', !show);
+        }
+
+        async function saveContent() {
+            const title = document.getElementById('newTitle').value;
+            const subj = document.getElementById('newSubj').value;
+            const type = document.getElementById('newType').value;
+            const link = document.getElementById('newLink').value;
+
+            if(!title || !link) return alert("Заполни все поля!");
+
+            const { error } = await _supabase.from('study_content').insert([
+                { title, subject: subj, type, link }
+            ]);
+
+            if(!error) {
+                toggleModal(false);
+                alert("Успешно добавлено!");
+                render();
+            } else {
+                alert("Ошибка: " + error.message);
+            }
         }
 
         function goBack() {
@@ -99,32 +149,30 @@
         }
 
         function renderCourses() {
-            const subs = [{n:'Математика', t:'Шелудько А.А.', i:'📐'}, {n:'Русский язык', t:'Константинова Е.В.', i:'🇷🇺'}];
+            const subs = [{n:'Математика', t:'Шелудько А.А.', i:'📐'}, {n:'Русский язык', t:'Константинова Е.В.', i:'🇷🇺'}, {n:'Информатика', t:'Григорьева И.И.', i:'💻'}];
             return `<div class="grid gap-6">${subs.map(s => `
-                <div class="bg-white p-8 rounded-[3rem] border border-gray-50 card-shadow flex justify-between items-center group transition-all hover:-translate-y-1">
+                <div class="bg-white p-8 rounded-[3rem] border border-gray-50 flex justify-between items-center group transition-all hover:-translate-y-1 shadow-sm">
                     <div class="flex items-center gap-8">
                         <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center text-4xl group-hover:scale-110 transition">${s.i}</div>
                         <div>
-                            <span class="text-[10px] font-black bg-indigo-600 text-white px-4 py-1 rounded-full uppercase mb-3 inline-block">11 класс</span>
-                            <h3 class="text-2xl font-black text-gray-800">Подготовка к ЕГЭ по ${s.n}</h3>
-                            <p class="text-gray-400 font-medium mt-1 italic">Учитель: ${s.t}</p>
+                            <span class="text-[10px] font-black bg-indigo-600 text-white px-4 py-1 rounded-full uppercase mb-3 inline-block">Запись открыта</span>
+                            <h3 class="text-2xl font-black text-gray-800 leading-tight">Подготовка к ЕГЭ по ${s.n}</h3>
+                            <p class="text-gray-400 font-bold mt-1 italic italic">Учитель: ${s.t}</p>
                         </div>
                     </div>
                     <button onclick="selectedSubj='${s.n}'; view='lessons'; render()" class="bg-gray-900 text-white px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all">Открыть</button>
                 </div>`).join('')}</div>`;
         }
 
-        function renderLessonsList() {
-            return `<div id="lessons-box" class="space-y-4 text-center py-20 text-gray-400 font-bold uppercase text-xs">Загрузка программы...</div>`;
-        }
+        function renderLessonsList() { return `<div id="lessons-box" class="space-y-4"></div>`; }
 
         async function loadLessons() {
             const { data } = await _supabase.from('study_content').select('*').eq('subject', selectedSubj).order('created_at', {ascending: true});
             const box = document.getElementById('lessons-box');
             if(data && box) {
-                if(data.length === 0) { box.innerHTML = "Уроков пока нет"; return; }
+                if(data.length === 0) { box.innerHTML = `<div class="text-center py-20 text-gray-400 font-bold uppercase text-[10px]">Уроков пока нет</div>`; return; }
                 box.innerHTML = data.map((l, i) => `
-                    <div onclick="selectedLessonId=${l.id}; lessonTitle='${l.title}'; view='lesson-details'; render()" class="bg-white p-6 rounded-[2.5rem] border border-gray-50 flex justify-between items-center cursor-pointer hover:border-indigo-200 transition-all group">
+                    <div onclick="selectedLessonId=${l.id}; lessonTitle='${l.title}'; view='lesson-details'; render()" class="bg-white p-6 rounded-[2.5rem] border border-gray-50 flex justify-between items-center cursor-pointer hover:border-indigo-200 transition-all group shadow-sm">
                         <div class="flex items-center gap-6">
                             <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition">▶</div>
                             <div class="text-left">
@@ -139,7 +187,7 @@
 
         function renderLessonDetails() {
             return `
-                <div class="space-y-4">
+                <div class="space-y-4 animate-in fade-in duration-500">
                     <details class="group bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm" open>
                         <summary class="flex items-center justify-between p-8 cursor-pointer list-none">
                             <div class="flex items-center gap-6">
@@ -148,9 +196,8 @@
                             </div>
                             <span class="text-gray-300 group-open:rotate-180 transition">▼</span>
                         </summary>
-                        <div class="px-8 pb-8 text-gray-500 leading-relaxed font-medium">В этом уроке мы разберем ключевые темы и подготовимся к практическим заданиям.</div>
+                        <div class="px-8 pb-8 text-gray-500 font-medium">Добро пожаловать на занятие! Здесь вы найдете все необходимые ссылки и задания.</div>
                     </details>
-
                     <details class="group bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
                         <summary class="flex items-center justify-between p-8 cursor-pointer list-none">
                             <div class="flex items-center gap-6">
@@ -161,7 +208,6 @@
                         </summary>
                         <div id="hw-box" class="px-8 pb-8 space-y-3"></div>
                     </details>
-
                     <details class="group bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm">
                         <summary class="flex items-center justify-between p-8 cursor-pointer list-none">
                             <div class="flex items-center gap-6">
@@ -180,15 +226,9 @@
             if(data && data[0]) {
                 const item = data[0];
                 const target = item.type === 'homework' ? 'hw-box' : 'mat-box';
-                document.getElementById(target).innerHTML = `
-                    <a href="${item.link}" target="_blank" class="flex items-center justify-between p-5 bg-indigo-50 rounded-3xl group hover:bg-indigo-600 transition-all">
-                        <span class="font-black text-indigo-600 group-hover:text-white transition">📂 Открыть файл</span>
-                        <span class="text-indigo-400 group-hover:text-white">→</span>
-                    </a>
-                `;
-                // Очистка другого бокса если там пусто
                 const other = target === 'hw-box' ? 'mat-box' : 'hw-box';
-                document.getElementById(other).innerHTML = `<p class="text-gray-300 text-xs font-bold uppercase tracking-widest">Пока ничего не добавлено</p>`;
+                document.getElementById(target).innerHTML = `<a href="${item.link}" target="_blank" class="flex items-center justify-between p-6 bg-indigo-50 rounded-[2rem] group hover:bg-indigo-600 transition-all"><span class="font-black text-indigo-600 group-hover:text-white transition uppercase text-xs tracking-widest">📂 Открыть файл</span><span class="text-indigo-400 group-hover:text-white">→</span></a>`;
+                document.getElementById(other).innerHTML = `<p class="text-gray-300 text-[10px] font-black uppercase tracking-widest">Пусто</p>`;
             }
         }
 
