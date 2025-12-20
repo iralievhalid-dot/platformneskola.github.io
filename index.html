@@ -2,67 +2,117 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Platform 2025 | Control</title>
+    <title>Platform 2025 | Education</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
-
-    <div id="login-form" class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border border-gray-200">
-        <h2 class="text-2xl font-black mb-6 text-center text-gray-800">ВХОД В СИСТЕМУ</h2>
-        <input type="text" id="uname" placeholder="Логин (из Supabase)" class="w-full p-3 mb-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-        <input type="password" id="pass" placeholder="Пароль" class="w-full p-3 mb-6 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-        <button onclick="login()" id="btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-all">ВОЙТИ</button>
-        <p id="msg" class="text-red-500 text-sm mt-4 text-center hidden"></p>
-    </div>
-
-    <div id="content" class="hidden w-full max-w-4xl p-6">
-        <div class="bg-white p-10 rounded-3xl shadow-2xl text-center">
-            <h1 class="text-4xl font-black mb-4">ДОБРО ПОЖАЛОВАТЬ!</h1>
-            <p id="welcome-text" class="text-xl text-gray-600 mb-8"></p>
-            <div class="p-6 bg-green-50 border-2 border-dashed border-green-200 rounded-2xl">
-                <p class="text-green-700 font-bold">Связь с базой данных подтверждена.</p>
-                <p class="text-green-600 text-sm">Ты авторизован как Хранитель/Учитель.</p>
-            </div>
-            <button onclick="location.reload()" class="mt-8 text-gray-400 hover:text-red-500 underline text-sm">Выйти из системы</button>
-        </div>
-    </div>
+<body class="bg-gray-50 font-sans">
+    <div id="app"></div>
 
     <script>
         const S_URL = "https://ihwxjkqzjaacizarwugc.supabase.co";
         const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlod3hqa3F6amFhY2l6YXJ3dWdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNTEzNzcsImV4cCI6MjA4MTcyNzM3N30.wP8r-0PoBtF8pgP1cv_nSW4ueHPnRSeLQtdv9nA8Vu0";
         const _supabase = supabase.createClient(S_URL, S_KEY);
 
-        async function login() {
+        let currentUser = null;
+
+        // ЭКРАН ВХОДА
+        function showLogin() {
+            document.getElementById('app').innerHTML = `
+                <div class="flex items-center justify-center min-h-screen">
+                    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm border">
+                        <h2 class="text-2xl font-black mb-6 text-center text-blue-600">ВХОД</h2>
+                        <input type="text" id="uname" placeholder="Логин" class="w-full p-3 mb-3 border rounded-xl outline-none">
+                        <input type="password" id="pass" placeholder="Пароль" class="w-full p-3 mb-6 border rounded-xl outline-none">
+                        <button onclick="handleLogin()" id="loginBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">ВОЙТИ</button>
+                    </div>
+                </div>`;
+        }
+
+        async function handleLogin() {
             const u = document.getElementById('uname').value;
             const p = document.getElementById('pass').value;
-            const btn = document.getElementById('btn');
-            const msg = document.getElementById('msg');
-
-            btn.innerText = "ПРОВЕРКА...";
-            msg.classList.add('hidden');
-
-            try {
-                const { data, error } = await _supabase
-                    .from('users')
-                    .select('*')
-                    .eq('username', u)
-                    .eq('password', p)
-                    .single();
-
-                if (error || !data) throw new Error("Неверный логин или пароль");
-
-                // Прячем вход, показываем успех
-                document.getElementById('login-form').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
-                document.getElementById('welcome-text').innerText = `Привет, ${data.first_name}! Твоя роль: ${data.role}`;
-
-            } catch (err) {
-                msg.innerText = err.message;
-                msg.classList.remove('hidden');
-                btn.innerText = "ВОЙТИ";
+            const { data, error } = await _supabase.from('users').select('*').eq('username', u).eq('password', p).single();
+            
+            if (data) {
+                currentUser = data;
+                showDashboard();
+            } else {
+                alert("Ошибка доступа!");
             }
         }
+
+        // ГЛАВНЫЙ ЭКРАН
+        function showDashboard() {
+            document.getElementById('app').innerHTML = `
+                <nav class="bg-white border-b p-4 flex justify-between items-center shadow-sm">
+                    <span class="font-black text-blue-600">MY SCHOOL</span>
+                    <span class="text-sm font-bold bg-gray-100 px-3 py-1 rounded-full">👤 ${currentUser.first_name}</span>
+                </nav>
+                <main class="p-6 max-w-4xl mx-auto">
+                    <h1 class="text-3xl font-black mb-8">Мои предметы</h1>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                        <div onclick="showChat('Математика')" class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-blue-500 cursor-pointer hover:scale-105 transition">
+                            <h3 class="text-xl font-bold">📐 Математика</h3>
+                            <p class="text-gray-500 text-sm">Нажми, чтобы войти в чат урока</p>
+                        </div>
+                        <div onclick="showChat('Русский язык')" class="bg-white p-6 rounded-2xl shadow-sm border-b-4 border-red-500 cursor-pointer hover:scale-105 transition">
+                            <h3 class="text-xl font-bold">🇷🇺 Русский язык</h3>
+                            <p class="text-gray-500 text-sm">Нажми, чтобы войти в чат урока</p>
+                        </div>
+                    </div>
+                </main>`;
+        }
+
+        // ОКНО ЧАТА
+        async function showChat(subject) {
+            document.getElementById('app').innerHTML = `
+                <div class="flex flex-col h-screen">
+                    <header class="p-4 bg-white border-b flex justify-between items-center">
+                        <button onclick="showDashboard()" class="text-blue-600">← Назад</button>
+                        <h2 class="font-bold">${subject}</h2>
+                        <div></div>
+                    </header>
+                    <div id="chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                        </div>
+                    <div class="p-4 bg-white border-t flex gap-2">
+                        <input type="text" id="msgInput" placeholder="Написать сообщение..." class="flex-1 p-2 border rounded-lg outline-none">
+                        <button onclick="sendMessage()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Отправить</button>
+                    </div>
+                </div>`;
+            loadMessages();
+            // Обновляем чат каждые 3 секунды
+            setInterval(loadMessages, 3000);
+        }
+
+        async function loadMessages() {
+            const { data } = await _supabase.from('messages').select('*').order('created_at', { ascending: true });
+            const box = document.getElementById('chat-box');
+            if (box) {
+                box.innerHTML = data.map(m => `
+                    <div class="max-w-[80%] ${m.sender_name === currentUser.first_name ? 'ml-auto' : ''}">
+                        <div class="text-[10px] text-gray-400 mb-1">${m.sender_name} (${m.role})</div>
+                        <div class="${m.role === 'teacher' ? 'bg-blue-600 text-white' : 'bg-white border text-gray-800'} p-3 rounded-2xl shadow-sm text-sm">
+                            ${m.text}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const text = input.value;
+            if (!text) return;
+
+            await _supabase.from('messages').insert([
+                { text: text, sender_name: currentUser.first_name, role: currentUser.role }
+            ]);
+            input.value = '';
+            loadMessages();
+        }
+
+        showLogin();
     </script>
 </body>
 </html>
