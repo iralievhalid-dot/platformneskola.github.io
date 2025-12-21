@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform 2025 | Messenger</title>
+    <title>Platform 2025 | Pro</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -12,8 +12,7 @@
         .active-nav { color: #4f46e5; background: #eef2ff; border-right: 4px solid #4f46e5; }
         .chat-bubble-me { background: #4f46e5; color: white; border-radius: 1.5rem 1.5rem 0 1.5rem; }
         .chat-bubble-other { background: white; color: #1f2937; border-radius: 1.5rem 1.5rem 1.5rem 0; border: 1px solid #f1f5f9; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .notif-badge { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; background: #ef4444; border-radius: 50%; border: 2px solid white; }
     </style>
 </head>
 <body>
@@ -26,17 +25,17 @@
 
         let currentUser = null;
         let view = 'courses'; 
-        let selectedSubj = '';
-        let activeChat = null; // Какой чат открыт
+        let activeChat = null;
+        let showNotifs = false;
         const ADMIN_USERNAME = "@adminplatformi";
 
         function showLogin() {
             document.getElementById('app').innerHTML = `
                 <div class="flex items-center justify-center min-h-screen">
                     <div class="p-10 w-full max-w-sm bg-white rounded-[3rem] shadow-2xl text-center">
-                        <h2 class="text-3xl font-black mb-8 text-indigo-600 tracking-tighter uppercase">Вход</h2>
-                        <input type="text" id="uname" placeholder="Логин" class="w-full p-4 mb-3 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                        <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 mb-6 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
+                        <h2 class="text-3xl font-black mb-8 text-indigo-600 tracking-tighter uppercase font-black">Вход</h2>
+                        <input type="text" id="uname" placeholder="Логин" class="w-full p-4 mb-3 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
+                        <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 mb-6 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold">
                         <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">ВОЙТИ</button>
                     </div>
                 </div>`;
@@ -46,7 +45,7 @@
             const u = document.getElementById('uname').value;
             const p = document.getElementById('pass').value;
             const { data } = await _supabase.from('users').select('*').eq('username', u).eq('password', p).single();
-            if (data) { currentUser = data; render(); } else { alert("Ошибка доступа!"); }
+            if (data) { currentUser = data; render(); } else { alert("Ошибка!"); }
         }
 
         function render() {
@@ -55,24 +54,36 @@
                     <aside class="w-24 bg-white border-r border-gray-100 flex flex-col items-center py-10 gap-10">
                         <div class="text-indigo-600 text-3xl font-black italic">P.</div>
                         <nav class="flex flex-col gap-6 w-full">
-                            <button onclick="view='courses'; render()" class="p-4 flex flex-col items-center gap-1 transition ${view==='courses'?'active-nav':'text-gray-300 hover:text-indigo-500'}">
+                            <button onclick="view='courses'; activeChat=null; render()" class="p-4 flex flex-col items-center gap-1 transition ${view==='courses'?'active-nav':'text-gray-300 hover:text-indigo-500'}">
                                 <span class="text-2xl">📘</span>
-                                <span class="text-[9px] font-black uppercase tracking-widest">Курсы</span>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-center">Курсы</span>
                             </button>
                             <button onclick="view='chats'; render()" class="p-4 flex flex-col items-center gap-1 transition ${view==='chats'?'active-nav':'text-gray-300 hover:text-indigo-500'}">
                                 <span class="text-2xl">💬</span>
-                                <span class="text-[9px] font-black uppercase tracking-widest text-center">Чаты</span>
+                                <span class="text-[9px] font-black uppercase tracking-widest text-center text-center">Чаты</span>
                             </button>
                         </nav>
                         <button onclick="location.reload()" class="mt-auto p-4 text-gray-300 hover:text-red-500">🚪</button>
                     </aside>
 
-                    <main class="flex-1 flex flex-col bg-white">
+                    <main class="flex-1 flex flex-col bg-white relative">
                         <header class="p-6 px-12 flex justify-between items-center bg-white border-b border-gray-50">
-                            <h1 class="text-2xl font-black text-gray-800 tracking-tight">
-                                ${view === 'courses' ? 'Мои курсы' : 'Мессенджер'}
-                            </h1>
-                            <div class="flex items-center gap-6">
+                            <h1 class="text-2xl font-black text-gray-800 tracking-tight">${view === 'courses' ? 'Мои курсы' : 'Мессенджер'}</h1>
+                            <div class="flex items-center gap-8">
+                                <div class="relative">
+                                    <button onclick="showNotifs=!showNotifs; render()" class="text-2xl relative transition hover:scale-110">
+                                        🔔<div class="notif-badge"></div>
+                                    </button>
+                                    ${showNotifs ? `
+                                        <div class="absolute right-0 mt-4 w-72 bg-white rounded-3xl shadow-2xl border border-gray-50 z-[100] p-4 animate-in fade-in slide-in-from-top-2">
+                                            <p class="text-[10px] font-black text-gray-400 uppercase mb-3 px-2">Уведомления</p>
+                                            <div class="space-y-2">
+                                                <div class="p-3 bg-indigo-50 rounded-2xl text-xs font-bold text-indigo-700 italic">✨ Система запущена успешно!</div>
+                                                <div class="p-3 bg-gray-50 rounded-2xl text-xs font-bold text-gray-600">🔔 Приятной работы на платформе</div>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
                                 ${currentUser.role === 'teacher' ? `<button onclick="toggleModal(true)" class="bg-indigo-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">+ Добавить урок</button>` : ''}
                                 <div class="text-right">
                                     <p class="font-bold text-sm leading-none">${currentUser.first_name}</p>
@@ -81,28 +92,28 @@
                             </div>
                         </header>
 
-                        <div class="flex-1 overflow-y-auto p-10">
-                            ${view === 'courses' ? renderCourses() : renderMessenger()}
+                        <div class="flex-1 overflow-hidden">
+                            ${view === 'courses' ? `<div class="p-10 overflow-y-auto h-full">${renderCourses()}</div>` : renderMessenger()}
                         </div>
                     </main>
                 </div>
-                
+
                 <div id="adminModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
                     <div class="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl relative">
-                        <button onclick="toggleModal(false)" class="absolute top-8 right-8 text-gray-400 hover:text-gray-800 text-xl">✕</button>
+                        <button onclick="toggleModal(false)" class="absolute top-8 right-8 text-gray-400 text-xl">✕</button>
                         <h3 class="text-2xl font-black mb-6 tracking-tight">Новый урок</h3>
-                        <div class="space-y-4">
-                            <input type="text" id="newTitle" placeholder="Название урока" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            <select id="newSubj" class="w-full p-4 bg-gray-50 rounded-2xl outline-none appearance-none">
+                        <div class="space-y-4 font-bold">
+                            <input type="text" id="newTitle" placeholder="Название урока" class="w-full p-4 bg-gray-50 rounded-2xl outline-none">
+                            <select id="newSubj" class="w-full p-4 bg-gray-50 rounded-2xl outline-none appearance-none cursor-pointer">
                                 <option value="Математика">Математика</option>
                                 <option value="Русский язык">Русский язык</option>
                             </select>
-                            <select id="newType" class="w-full p-4 bg-gray-50 rounded-2xl outline-none appearance-none">
+                            <select id="newType" class="w-full p-4 bg-gray-50 rounded-2xl outline-none appearance-none cursor-pointer">
                                 <option value="material">📚 Материал</option>
                                 <option value="homework">🎒 Домашнее задание</option>
                             </select>
-                            <input type="text" id="newLink" placeholder="Ссылка на файл" class="w-full p-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button onclick="saveContent()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl hover:bg-indigo-700 transition">СОХРАНИТЬ</button>
+                            <input type="text" id="newLink" placeholder="Ссылка на файл" class="w-full p-4 bg-gray-50 rounded-2xl outline-none">
+                            <button onclick="saveContent()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl">СОХРАНИТЬ</button>
                         </div>
                     </div>
                 </div>`;
@@ -110,59 +121,60 @@
         }
 
         function renderCourses() {
-            const subs = [{n:'Математика', t:'Шелудько А.А.', i:'📐'}, {n:'Русский язык', t:'Константинова Е.В.', i:'🇷🇺'}];
+            const subs = [{n:'Математика', i:'📐'}, {n:'Русский язык', i:'🇷🇺'}];
             return `<div class="grid gap-6">${subs.map(s => `
-                <div class="bg-white p-8 rounded-[3rem] border border-gray-100 flex justify-between items-center shadow-sm hover:shadow-md transition">
+                <div class="bg-white p-8 rounded-[3rem] border border-gray-100 flex justify-between items-center shadow-sm">
                     <div class="flex items-center gap-8">
                         <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-[2rem] flex items-center justify-center text-4xl">${s.i}</div>
-                        <div><h3 class="text-2xl font-black text-gray-800">ЕГЭ по ${s.n}</h3><p class="text-gray-400 font-bold mt-1">Учитель: ${s.t}</p></div>
+                        <div><h3 class="text-2xl font-black text-gray-800">ЕГЭ по ${s.n}</h3><p class="text-gray-400 font-bold mt-1 uppercase text-xs tracking-widest">Курс активен</p></div>
                     </div>
-                    <button class="bg-gray-900 text-white px-10 py-5 rounded-3xl font-black text-xs uppercase hover:bg-indigo-600 transition">Открыть</button>
+                    <button onclick="view='chats'; activeChat='${s.n}'; render()" class="bg-gray-900 text-white px-10 py-5 rounded-3xl font-black text-[10px] uppercase hover:bg-indigo-600 transition tracking-widest">Чат группы</button>
                 </div>`).join('')}</div>`;
         }
 
         function renderMessenger() {
             const subjects = ['Математика', 'Русский язык'];
             return `
-                <div class="flex h-full bg-white rounded-[3rem] border border-gray-100 overflow-hidden shadow-sm">
-                    <div class="w-1/3 border-r border-gray-50 bg-gray-50/30">
-                        <div class="p-6 font-black text-gray-400 uppercase text-[10px] tracking-widest border-b border-gray-50">Ваши чаты</div>
+                <div class="flex h-full overflow-hidden bg-white">
+                    <div class="w-80 border-r border-gray-50 bg-gray-50/20">
+                        <div class="p-8 font-black text-gray-400 uppercase text-[10px] tracking-[0.2em]">Ваши группы</div>
                         ${subjects.map(s => `
-                            <div onclick="activeChat='${s}'; render()" class="p-6 cursor-pointer hover:bg-white transition flex items-center gap-4 ${activeChat===s?'bg-white':''}">
-                                <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">💬</div>
-                                <div>
-                                    <p class="font-black text-sm text-gray-800">${s}</p>
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase">Группа курса</p>
-                                </div>
+                            <div onclick="activeChat='${s}'; render()" class="px-8 py-6 cursor-pointer hover:bg-indigo-50/50 transition flex items-center gap-4 ${activeChat===s?'bg-white border-l-4 border-indigo-600':''}">
+                                <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center font-black">💬</div>
+                                <div><p class="font-black text-sm text-gray-800">${s}</p><p class="text-[9px] text-gray-400 font-black uppercase tracking-tighter italic text-indigo-400">Online</p></div>
                             </div>
                         `).join('')}
                     </div>
-                    <div class="flex-1 flex flex-col bg-white">
+                    <div class="flex-1 flex flex-col">
                         ${activeChat ? `
-                            <div class="p-6 border-b border-gray-50 font-black text-indigo-600 uppercase text-xs tracking-widest">Чат: ${activeChat}</div>
-                            <div id="chat-window" class="flex-1 overflow-y-auto p-6 space-y-4 bg-[#fcfdfe]"></div>
-                            <div class="p-6 border-t border-gray-50 flex gap-4">
-                                <input type="text" id="msgIn" placeholder="Напишите сообщение..." class="flex-1 p-4 bg-gray-50 rounded-2xl outline-none">
-                                <button onclick="sendMsg()" class="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-indigo-100 transition hover:bg-indigo-700">➤</button>
+                            <div class="p-6 border-b border-gray-50 font-black text-indigo-600 uppercase text-xs tracking-widest px-10"># ${activeChat}</div>
+                            <div id="chat-window" class="flex-1 overflow-y-auto p-10 space-y-6"></div>
+                            <div class="p-8 bg-white border-t border-gray-50 flex gap-4 px-10">
+                                <input type="text" id="msgIn" onkeypress="if(event.key==='Enter')sendMsg()" placeholder="Напишите сообщение в ${activeChat}..." class="flex-1 p-5 bg-gray-50 rounded-[2rem] outline-none font-medium">
+                                <button onclick="sendMsg()" class="w-16 h-16 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg hover:rotate-12 transition transition-all uppercase font-black text-xs">GO</button>
                             </div>
-                        ` : `<div class="flex-1 flex flex-col items-center justify-center text-gray-300 font-bold uppercase text-[10px] tracking-[0.2em]"><span class="text-5xl mb-4">💬</span>Выберите чат для общения</div>`}
+                        ` : `<div class="flex-1 flex flex-col items-center justify-center text-gray-300 font-black uppercase text-[10px] tracking-[0.3em]"><span class="text-6xl mb-6">💬</span>Выберите чат</div>`}
                     </div>
                 </div>`;
         }
 
         async function loadChatMessages() {
-            const { data } = await _supabase.from('messages').select('*').order('created_at', { ascending: true });
+            // ФИЛЬТРАЦИЯ: выбираем сообщения только для текущего активного чата (subject)
+            const { data } = await _supabase.from('messages')
+                .select('*')
+                .eq('subject', activeChat) // Вот это исправляет баг!
+                .order('created_at', { ascending: true });
+            
             const win = document.getElementById('chat-window');
             if (win && data) {
                 win.innerHTML = data.map(m => {
                     const isMe = m.sender_name === currentUser.first_name;
-                    const isBoss = currentUser.username === ADMIN_USERNAME;
                     return `
                         <div class="flex flex-col ${isMe?'items-end':'items-start'} group">
-                            <span class="text-[9px] font-black text-gray-300 uppercase mb-1 px-2">${m.sender_name} • ${m.role}</span>
-                            <div class="relative p-4 max-w-[80%] text-sm font-medium shadow-sm ${isMe?'chat-bubble-me':'chat-bubble-other'}">
+                            <span class="text-[9px] font-black text-gray-300 uppercase mb-2 px-3 tracking-widest">${m.sender_name} • ${m.role}</span>
+                            <div class="relative p-5 max-w-[75%] text-sm font-semibold shadow-sm ${isMe?'chat-bubble-me':'chat-bubble-other'}">
                                 ${m.text}
-                                ${isBoss ? `<button onclick="deleteMsg(${m.id})" class="absolute -top-2 -left-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition shadow-lg">✕</button>` : ''}
+                                ${currentUser.username === ADMIN_USERNAME ? `<button onclick="deleteMsg(${m.id})" class="absolute -top-2 -left-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition shadow-lg">✕</button>` : ''}
                             </div>
                         </div>`;
                 }).join('');
@@ -173,8 +185,14 @@
 
         async function sendMsg() {
             const txt = document.getElementById('msgIn').value.trim();
-            if(!txt) return;
-            await _supabase.from('messages').insert([{ text: txt, sender_name: currentUser.first_name, role: currentUser.role }]);
+            if(!txt || !activeChat) return;
+            // СОХРАНЕНИЕ: добавляем поле subject
+            await _supabase.from('messages').insert([{ 
+                text: txt, 
+                sender_name: currentUser.first_name, 
+                role: currentUser.role,
+                subject: activeChat // Сообщения теперь знают, к какому чату они относятся
+            }]);
             document.getElementById('msgIn').value = '';
             loadChatMessages();
         }
