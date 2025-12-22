@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform 2025 | Final Pro</title>
+    <title>Platform 2025 | Hierarchy Edition</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -14,6 +14,7 @@
         .notif-dot { position: absolute; top: 0; right: 0; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid white; }
         .chat-scroll::-webkit-scrollbar { width: 4px; }
         .chat-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        .modal-bg { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
     </style>
 </head>
 <body>
@@ -28,6 +29,9 @@
         let activeChat = null;
         let myInvites = [];
         let showNotifs = false;
+        let userRoleInChat = 'member';
+        let showMembersModal = false;
+        let chatMembersList = [];
 
         function showLogin() {
             document.getElementById('app').innerHTML = `
@@ -36,8 +40,8 @@
                         <div class="mb-8 text-3xl font-black text-indigo-600 italic">P.25</div>
                         <div class="space-y-3">
                             <input type="text" id="fname" placeholder="Ваше Имя" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
-                            <input type="text" id="uname" placeholder="Логин (@login)" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
-                            <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
+                            <input type="text" id="uname" placeholder="Логин" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border">
+                            <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border">
                             <button onclick="handleLogin()" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-xs tracking-widest transition hover:bg-indigo-700">Войти</button>
                         </div>
                     </div>
@@ -48,8 +52,6 @@
             const f = document.getElementById('fname').value;
             const u = document.getElementById('uname').value;
             const p = document.getElementById('pass').value;
-            if(!f || !u || !p) return alert("Заполни все поля!");
-
             const { data } = await _supabase.from('users').select('*').eq('username', u).eq('password', p).single();
             if (data) {
                 currentUser = {...data, first_name: f};
@@ -67,26 +69,26 @@
                     <aside class="w-20 bg-white border-r flex flex-col items-center py-8 gap-8">
                         <div class="text-indigo-600 text-2xl font-black italic">P.</div>
                         <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl cursor-pointer">💬</div>
-                        <button onclick="location.reload()" class="mt-auto text-gray-300 hover:text-red-500 transition">🚪</button>
+                        <button onclick="location.reload()" class="mt-auto text-gray-300 hover:text-red-500">🚪</button>
                     </aside>
-                    <main class="flex-1 flex flex-col bg-white overflow-hidden">
+                    <main class="flex-1 flex flex-col bg-white overflow-hidden relative">
                         <header class="h-20 border-b flex items-center justify-between px-10">
                             <h1 class="font-black text-gray-800 uppercase tracking-tighter text-lg">Мессенджер</h1>
-                            <div class="flex items-center gap-6 relative">
+                            <div class="flex items-center gap-6">
                                 <button onclick="showNotifs=!showNotifs; render()" class="text-xl relative">
                                     🔔${myInvites.length > 0 ? '<div class="notif-dot"></div>' : ''}
                                 </button>
                                 ${showNotifs ? renderNotifBox() : ''}
                                 <div class="text-right">
-                                    <p class="font-bold text-sm leading-none">${currentUser.first_name}</p>
-                                    <p class="text-[9px] text-indigo-400 font-black uppercase mt-1">Online</p>
+                                    <p class="font-bold text-sm">${currentUser.first_name}</p>
+                                    <p class="text-[9px] text-indigo-400 font-black uppercase">Online</p>
                                 </div>
                             </div>
                         </header>
                         <div class="flex-1 flex overflow-hidden">
                             <div class="w-72 border-r bg-gray-50/30 p-4">
                                 <div class="flex justify-between items-center mb-6 px-2">
-                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Чаты</span>
+                                    <span class="text-[10px] font-black text-gray-400 uppercase">Чаты</span>
                                     <button onclick="createNewChat()" class="w-6 h-6 bg-indigo-600 text-white rounded-md font-bold">+</button>
                                 </div>
                                 <div class="space-y-1 overflow-y-auto chat-scroll">
@@ -101,40 +103,126 @@
                                 ${activeChat ? renderChatWindow() : `<div class="flex-1 flex items-center justify-center text-gray-300 font-black uppercase text-xs tracking-[0.3em]">Выберите чат</div>`}
                             </div>
                         </div>
+                        ${showMembersModal ? renderMembersModal() : ''}
                     </main>
                 </div>`;
-            if (activeChat) loadChatMessages();
+            if (activeChat) loadChatData();
+        }
+
+        async function loadChatData() {
+            const { data: memberInfo } = await _supabase.from('chat_members').select('role').eq('username', currentUser.username).eq('subject', activeChat).single();
+            userRoleInChat = memberInfo ? memberInfo.role : 'member';
+            loadChatMessages();
         }
 
         function renderChatWindow() {
             return `
                 <div class="h-14 border-b flex items-center justify-between px-8 bg-white/50 backdrop-blur-sm">
-                    <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Чат: ${activeChat}</span>
+                    <div onclick="openMembers()" class="cursor-pointer group flex items-center gap-2">
+                        <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Чат: ${activeChat}</span>
+                        <span class="text-[10px] text-gray-300 group-hover:text-indigo-400 transition">▼ Участники</span>
+                    </div>
                     <button onclick="inviteUserPrompt()" class="text-[9px] font-black bg-gray-100 px-3 py-1.5 rounded-lg uppercase hover:bg-indigo-600 hover:text-white transition">Пригласить</button>
                 </div>
                 <div id="chat-window" class="flex-1 overflow-y-auto p-8 space-y-6 chat-scroll"></div>
                 <div class="p-6 border-t flex gap-3 items-center bg-white">
                     <button onclick="document.getElementById('file-input').click()" class="text-2xl hover:scale-110 transition">📎</button>
                     <input type="file" id="file-input" class="hidden" onchange="uploadFile(this)">
-                    <input type="text" id="msgIn" onkeypress="if(event.key==='Enter')sendMsg()" placeholder="Напишите сообщение..." class="flex-1 p-4 bg-gray-50 rounded-2xl outline-none text-sm font-semibold border focus:border-indigo-200">
+                    <input type="text" id="msgIn" onkeypress="if(event.key==='Enter')sendMsg()" placeholder="Напишите..." class="flex-1 p-4 bg-gray-50 rounded-2xl outline-none text-sm font-semibold border">
                     <button onclick="sendMsg()" class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg font-black transition active:scale-95">GO</button>
                 </div>`;
+        }
+
+        async function openMembers() {
+            const { data } = await _supabase.from('chat_members').select('*').eq('subject', activeChat);
+            chatMembersList = data || [];
+            showMembersModal = true;
+            render();
+        }
+
+        function renderMembersModal() {
+            return `
+                <div class="absolute inset-0 z-[100] modal-bg flex items-center justify-center p-6">
+                    <div class="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 max-h-[80vh] flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="font-black text-gray-800 uppercase tracking-tighter">Участники чата</h2>
+                            <button onclick="showMembersModal=false; render()" class="text-gray-400 hover:text-black">✕</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto space-y-4 pr-2 chat-scroll">
+                            ${chatMembersList.map(m => {
+                                const isMe = m.username === currentUser.username;
+                                const isTargetOwner = m.role === 'owner';
+                                const isTargetAdmin = m.role === 'admin';
+                                
+                                // Логика кнопок управления
+                                let controls = '';
+                                if (!isMe && !isTargetOwner) {
+                                    if (userRoleInChat === 'owner') {
+                                        controls = `
+                                            <div class="flex gap-2">
+                                                <button onclick="changeRole('${m.username}', '${isTargetAdmin?'member':'admin'}')" class="text-[9px] font-black px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md uppercase">${isTargetAdmin?'Разжаловать':'Админ'}</button>
+                                                <button onclick="kickUser('${m.username}')" class="text-[9px] font-black px-2 py-1 bg-red-50 text-red-500 rounded-md uppercase">Удалить</button>
+                                            </div>`;
+                                    } else if (userRoleInChat === 'admin' && !isTargetAdmin) {
+                                        controls = `<button onclick="kickUser('${m.username}')" class="text-[9px] font-black px-2 py-1 bg-red-50 text-red-500 rounded-md uppercase">Удалить</button>`;
+                                    }
+                                }
+
+                                return `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-sm text-gray-800">@${m.username} ${isMe?'(Вы)':''}</span>
+                                            <span class="text-[9px] font-black uppercase text-indigo-400 tracking-widest">${m.role}</span>
+                                        </div>
+                                        ${controls}
+                                    </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        async function changeRole(u, newRole) {
+            await _supabase.from('chat_members').update({ role: newRole }).eq('username', u).eq('subject', activeChat);
+            openMembers();
+        }
+
+        async function kickUser(u) {
+            if(confirm('Удалить участника из чата?')) {
+                await _supabase.from('chat_members').delete().eq('username', u).eq('subject', activeChat);
+                openMembers();
+            }
         }
 
         async function loadChatMessages() {
             const { data } = await _supabase.from('messages').select('*').eq('subject', activeChat).order('created_at', { ascending: true });
             const win = document.getElementById('chat-window');
             if (win && data) {
+                // ПРОВЕРКА РОЛИ АВТОРА КАЖДОГО СООБЩЕНИЯ (нужна для логики удаления)
+                // Для простоты используем join или доп. запрос в реальности, но тут сделаем фильтр прав в рендере
+                const { data: allMembers } = await _supabase.from('chat_members').select('username, role').eq('subject', activeChat);
+                const rolesMap = Object.fromEntries(allMembers.map(am => [am.username, am.role]));
+
                 win.innerHTML = data.map(m => {
-                    const isMe = m.role === currentUser.username;
+                    const isMe = m.role === currentUser.username; // m.role тут это username отправителя
+                    const senderRole = rolesMap[m.role] || 'member';
+                    
+                    // ИЕРАРХИЯ УДАЛЕНИЯ:
+                    // 1. Свои сообщения можно удалять всегда.
+                    // 2. Владелец может удалять всё.
+                    // 3. Админ может удалять всех, кроме Владельца и других Админов.
+                    let canDelete = isMe;
+                    if (userRoleInChat === 'owner') canDelete = true;
+                    if (userRoleInChat === 'admin' && senderRole === 'member') canDelete = true;
+
                     return `
                         <div class="flex flex-col ${isMe?'items-end':'items-start'} group">
                             <span class="text-[10px] font-bold ${isMe?'text-indigo-400':'text-gray-400'} mb-1 px-1 uppercase tracking-tighter">
-                                ${m.sender_name}
+                                ${m.sender_name} ${senderRole==='owner'?'👑':(senderRole==='admin'?'⭐️':'')}
                             </span>
                             <div class="p-4 max-w-[80%] text-sm font-medium shadow-sm relative ${isMe?'bubble-me':'bubble-other'}">
                                 ${m.text}
-                                <button onclick="deleteMsg(${m.id})" class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow-md">✕</button>
+                                ${canDelete ? `<button onclick="deleteMsg(${m.id})" class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition flex items-center justify-center shadow-md">✕</button>` : ''}
                             </div>
                         </div>`;
                 }).join('');
@@ -146,30 +234,14 @@
         async function uploadFile(input) {
             if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
-            // ФИКС СКРИНШОТОВ: чистим имя от спецсимволов и пробелов
             const cleanName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+            const { data, error } = await _supabase.storage.from('chat-files').upload(cleanName, file, { contentType: file.type });
 
-            const { data, error } = await _supabase.storage
-                .from('chat-files')
-                .upload(cleanName, file, { contentType: file.type });
-
-            if (error) {
-                alert("Ошибка загрузки. Проверьте настройки Storage в Supabase.");
-            } else {
+            if (!error) {
                 const { data: urlData } = _supabase.storage.from('chat-files').getPublicUrl(cleanName);
-                
-                let content;
-                // ФИКС КАРТИНОК: если файл изображение - показываем его сразу
-                if (file.type.startsWith('image/')) {
-                    content = `<div class="space-y-2">
-                        <img src="${urlData.publicUrl}" class="rounded-lg max-w-full h-auto border border-black/5 shadow-sm" style="max-height: 250px;">
-                        <a href="${urlData.publicUrl}" target="_blank" class="block text-[9px] underline opacity-50 italic font-bold">Открыть оригинал</a>
-                    </div>`;
-                } else {
-                    content = `<div class="flex items-center gap-2 font-bold underline italic tracking-tight">
-                        <span class="text-xl">📄</span><a href="${urlData.publicUrl}" target="_blank">Файл: ${file.name}</a>
-                    </div>`;
-                }
+                let content = file.type.startsWith('image/') 
+                    ? `<img src="${urlData.publicUrl}" class="rounded-lg max-w-full h-auto" style="max-height: 250px;"><a href="${urlData.publicUrl}" target="_blank" class="block text-[9px] underline opacity-50 italic font-bold">Оригинал</a>`
+                    : `<div class="flex items-center gap-2 font-bold underline italic tracking-tight"><span class="text-xl">📄</span><a href="${urlData.publicUrl}" target="_blank">Файл: ${file.name}</a></div>`;
 
                 await _supabase.from('messages').insert([{ text: content, sender_name: currentUser.first_name, role: currentUser.username, subject: activeChat }]);
                 loadChatMessages();
@@ -185,7 +257,7 @@
         }
 
         async function deleteMsg(id) {
-            if(confirm('Удалить сообщение?')) {
+            if(confirm('Удалить?')) {
                 await _supabase.from('messages').delete().eq('id', id);
                 loadChatMessages();
             }
@@ -200,11 +272,9 @@
         }
 
         async function inviteUserPrompt() {
+            if (userRoleInChat === 'member') return alert("Только Админ или Владелец могут приглашать!");
             const u = prompt("Логин пользователя:");
-            if(u) {
-                await _supabase.from('chat_invites').insert([{ from_user: currentUser.username, to_username: u, subject: activeChat, status: 'pending' }]);
-                alert("Запрос отправлен!");
-            }
+            if(u) await _supabase.from('chat_invites').insert([{ from_user: currentUser.username, to_username: u, subject: activeChat, status: 'pending' }]);
         }
 
         async function startNotifPoller() {
@@ -214,12 +284,11 @@
         }
 
         function renderNotifBox() {
-            return `
-                <div class="absolute right-0 mt-64 w-64 bg-white rounded-3xl shadow-2xl border p-5 z-50">
-                    <p class="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest">Уведомления</p>
-                    ${myInvites.map(n => `<div class="p-3 bg-indigo-50 rounded-xl mb-2 border border-indigo-100"><p class="text-[10px] font-bold mb-2">${n.subject}</p><button onclick="respondInvite(${n.id}, '${n.subject}', 'accepted')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-[9px] font-black uppercase">Принять</button></div>`).join('')}
-                    ${myInvites.length === 0 ? '<p class="text-center text-[10px] font-bold text-gray-300 py-2">Нет приглашений</p>' : ''}
-                </div>`;
+            return `<div class="absolute right-0 mt-64 w-64 bg-white rounded-3xl shadow-2xl border p-5 z-[200]">
+                <p class="text-[9px] font-black text-gray-400 uppercase mb-4 tracking-widest text-center">Уведомления</p>
+                ${myInvites.map(n => `<div class="p-3 bg-indigo-50 rounded-xl mb-2 border border-indigo-100"><p class="text-[10px] font-bold mb-2">${n.subject}</p><button onclick="respondInvite(${n.id}, '${n.subject}', 'accepted')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-[9px] font-black uppercase">Принять</button></div>`).join('')}
+                ${myInvites.length === 0 ? '<p class="text-center text-[10px] font-bold text-gray-300 py-2">Пусто</p>' : ''}
+            </div>`;
         }
 
         async function respondInvite(id, subj, status) {
