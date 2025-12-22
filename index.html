@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platform 2025 | Total Control</title>
+    <title>Platform 2025 | Final Chat</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -31,12 +31,12 @@
         function showLogin() {
             document.getElementById('app').innerHTML = `
                 <div class="flex items-center justify-center min-h-screen">
-                    <div class="p-10 w-full max-w-sm bg-white rounded-[2.5rem] shadow-xl">
-                        <div class="text-center mb-8 text-3xl font-black text-indigo-600 italic">P.25</div>
+                    <div class="p-10 w-full max-w-sm bg-white rounded-[2.5rem] shadow-xl text-center">
+                        <div class="mb-8 text-3xl font-black text-indigo-600 italic">P.25</div>
                         <div class="space-y-3">
-                            <input type="text" id="fname" placeholder="Ваше Имя" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm">
-                            <input type="text" id="uname" placeholder="Логин (@login)" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm">
-                            <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm">
+                            <input type="text" id="fname" placeholder="Ваше Имя" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
+                            <input type="text" id="uname" placeholder="Логин (@login)" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
+                            <input type="password" id="pass" placeholder="Пароль" class="w-full p-4 bg-gray-50 rounded-xl outline-none font-bold text-sm border focus:border-indigo-300">
                             <button onclick="handleLogin()" id="btn-login" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg uppercase text-xs tracking-widest">Войти</button>
                         </div>
                     </div>
@@ -52,9 +52,8 @@
             const { data } = await _supabase.from('users').select('*').eq('username', u).eq('password', p).single();
             if (data) {
                 currentUser = {...data, first_name: f};
-                _supabase.from('users').update({ first_name: f }).eq('username', u);
-                startNotifPoller(); 
-                render(); 
+                await _supabase.from('users').update({ first_name: f }).eq('username', u);
+                startNotifPoller(); render(); 
             } else { alert("Ошибка входа!"); }
         }
 
@@ -71,7 +70,7 @@
                     </aside>
                     <main class="flex-1 flex flex-col bg-white">
                         <header class="h-20 border-b flex items-center justify-between px-10">
-                            <h1 class="font-black text-gray-800">МЕССЕНДЖЕР</h1>
+                            <h1 class="font-black text-gray-800 uppercase tracking-tight">Мессенджер</h1>
                             <div class="flex items-center gap-6 relative">
                                 <button onclick="showNotifs=!showNotifs; render()" class="text-xl relative">
                                     🔔${myInvites.length > 0 ? '<div class="notif-dot"></div>' : ''}
@@ -79,15 +78,15 @@
                                 ${showNotifs ? renderNotifBox() : ''}
                                 <div class="text-right">
                                     <p class="font-bold text-sm">${currentUser.first_name}</p>
-                                    <p class="text-[9px] text-indigo-400 font-black uppercase">@${currentUser.username}</p>
+                                    <p class="text-[9px] text-indigo-400 font-black uppercase tracking-widest">online</p>
                                 </div>
                             </div>
                         </header>
                         <div class="flex-1 flex overflow-hidden">
                             <div class="w-72 border-r bg-gray-50/30 p-4">
                                 <div class="flex justify-between items-center mb-6 px-2">
-                                    <span class="text-[10px] font-black text-gray-400 uppercase">Чаты</span>
-                                    <button onclick="createNewChat()" class="w-6 h-6 bg-indigo-600 text-white rounded-md font-bold">+</button>
+                                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Чаты</span>
+                                    <button onclick="createNewChat()" class="w-6 h-6 bg-indigo-600 text-white rounded-md font-bold hover:scale-110 transition">+</button>
                                 </div>
                                 <div class="space-y-1 overflow-y-auto">
                                     ${mySubs.map(s => `
@@ -108,16 +107,16 @@
 
         function renderChatWindow() {
             return `
-                <div class="h-14 border-b flex items-center justify-between px-8">
-                    <span class="text-[10px] font-black text-indigo-600 uppercase">Чат: ${activeChat}</span>
+                <div class="h-14 border-b flex items-center justify-between px-8 bg-white/50 backdrop-blur-sm">
+                    <span class="text-[10px] font-black text-indigo-600 uppercase">Группа: ${activeChat}</span>
                     <button onclick="inviteUserPrompt()" class="text-[9px] font-black bg-gray-100 px-3 py-1.5 rounded-lg uppercase">Пригласить</button>
                 </div>
                 <div id="chat-window" class="flex-1 overflow-y-auto p-8 space-y-6"></div>
-                <div class="p-6 border-t flex gap-3 items-center">
-                    <button onclick="document.getElementById('file-input').click()" class="text-2xl hover:scale-110">📎</button>
+                <div class="p-6 border-t flex gap-3 items-center bg-white">
+                    <button onclick="document.getElementById('file-input').click()" class="text-2xl hover:scale-125 transition">📎</button>
                     <input type="file" id="file-input" class="hidden" onchange="uploadFile(this)">
-                    <input type="text" id="msgIn" onkeypress="if(event.key==='Enter')sendMsg()" placeholder="Сообщение..." class="flex-1 p-4 bg-gray-50 rounded-2xl outline-none text-sm font-semibold">
-                    <button onclick="sendMsg()" class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg font-black">GO</button>
+                    <input type="text" id="msgIn" onkeypress="if(event.key==='Enter')sendMsg()" placeholder="Написать сообщение..." class="flex-1 p-4 bg-gray-50 rounded-2xl outline-none text-sm font-semibold border focus:border-indigo-200">
+                    <button onclick="sendMsg()" class="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-indigo-700 transition font-black">GO</button>
                 </div>`;
         }
 
@@ -133,17 +132,16 @@
             if (win && data) {
                 win.innerHTML = data.map(m => {
                     const isMe = m.role === currentUser.username;
-                    // ПРАВО НА УДАЛЕНИЕ: Своё сообщение или если ты Owner/Admin чата
                     const canDelete = isMe || userRoleInChat === 'owner' || userRoleInChat === 'admin';
                     
                     return `
-                        <div class="flex flex-col ${isMe?'items-end':'items-start'} group relative">
-                            <span class="text-[9px] font-bold ${isMe?'text-indigo-300':'text-gray-400'} mb-1 px-1 uppercase tracking-tighter">
-                                ${m.sender_name} (@${m.role})
+                        <div class="flex flex-col ${isMe?'items-end':'items-start'} group">
+                            <span class="text-[10px] font-bold ${isMe?'text-indigo-400':'text-gray-400'} mb-1 px-1 uppercase">
+                                ${m.sender_name}
                             </span>
                             <div class="p-4 max-w-[80%] text-sm font-medium shadow-sm relative ${isMe?'bubble-me':'bubble-other'}">
                                 ${m.text}
-                                ${canDelete ? `<button onclick="deleteMsg(${m.id})" class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition shadow-lg">✕</button>` : ''}
+                                ${canDelete ? `<button onclick="deleteMsg(${m.id})" class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition shadow-lg flex items-center justify-center">✕</button>` : ''}
                             </div>
                         </div>`;
                 }).join('');
@@ -161,23 +159,32 @@
         }
 
         async function deleteMsg(id) {
-            if(confirm('Удалить сообщение?')) {
+            if(confirm('Удалить?')) {
                 await _supabase.from('messages').delete().eq('id', id);
                 loadChatMessages();
             }
         }
 
         async function uploadFile(input) {
-            if (!input.files[0]) return;
+            if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
             const fileName = `${Date.now()}-${file.name}`;
-            const { data, error } = await _supabase.storage.from('chat-files').upload(fileName, file);
-            if (!error) {
+
+            // Исправленная загрузка
+            const { data, error } = await _supabase.storage.from('chat-files').upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+
+            if (error) {
+                console.error(error);
+                alert("Ошибка загрузки: " + error.message);
+            } else {
                 const { data: urlData } = _supabase.storage.from('chat-files').getPublicUrl(fileName);
-                const link = `<a href="${urlData.publicUrl}" target="_blank" class="underline font-bold italic">📄 Файл: ${file.name}</a>`;
+                const link = `<a href="${urlData.publicUrl}" target="_blank" class="underline font-bold">📄 Файл: ${file.name}</a>`;
                 await _supabase.from('messages').insert([{ text: link, sender_name: currentUser.first_name, role: currentUser.username, subject: activeChat }]);
                 loadChatMessages();
-            } else { alert("Ошибка загрузки!"); }
+            }
         }
 
         async function createNewChat() {
@@ -189,9 +196,11 @@
         }
 
         async function inviteUserPrompt() {
-            const u = prompt("Логин участника (@login):");
-            if(u) await _supabase.from('chat_invites').insert([{ from_user: currentUser.username, to_username: u, subject: activeChat, status: 'pending' }]);
-            alert("Инвайт отправлен!");
+            const u = prompt("Логин участника:");
+            if(u) {
+                await _supabase.from('chat_invites').insert([{ from_user: currentUser.username, to_username: u, subject: activeChat, status: 'pending' }]);
+                alert("Инвайт отправлен!");
+            }
         }
 
         async function startNotifPoller() {
@@ -210,7 +219,7 @@
                             <button onclick="respondInvite(${n.id}, '${n.subject}', 'accepted')" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-[9px] font-black uppercase">Принять</button>
                         </div>
                     `).join('')}
-                    ${myInvites.length === 0 ? '<p class="text-center text-[10px] font-bold text-gray-300 py-2 uppercase">Пусто</p>' : ''}
+                    ${myInvites.length === 0 ? '<p class="text-center text-[10px] font-bold text-gray-300 py-2 uppercase tracking-widest">Пусто</p>' : ''}
                 </div>`;
         }
 
